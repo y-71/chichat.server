@@ -1,6 +1,13 @@
 const
     {Server} = require("socket.io"),
-    server = new Server(8000);
+    server = new Server(8000,
+        {
+            cors: {
+                origin: "http://localhost:3000",
+            }
+        },
+        {transports: ['websocket']}
+        );
 
 let
     sequenceNumberByClient = new Map();
