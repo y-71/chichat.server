@@ -24,7 +24,7 @@ server.on("connection", (socket) => {
         if(data.topicName && data.peerId){
             const {topicName, peerId} = data
             //Adding user to the waiting pool
-            topicsQueues.set(topicName, [...topicsQueues.get(topicName), peerId])
+            topicsQueues.set(topicName, [...Array(topicsQueues.get(topicName)), peerId])
 
             // if there is a match, send otherPeerUid
             const topicQueue = topicsQueues.get(topicName)
