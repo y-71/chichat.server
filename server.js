@@ -38,7 +38,7 @@ server.on("connection", (socket) => {
 
         // cache socket
         const socketID = socket.id;
-        sockets.socketID = topic;
+        sockets[socketID] = topic;
 
         const validatePeer = () =>{
 
@@ -52,15 +52,15 @@ server.on("connection", (socket) => {
         }
         const handlePeer = () =>{
             // if there is a match, send otherPeerUid
+            console.log({topic})
             const queue = topicQueues[topic];
-
+            queue.log()
             const matchpeer = queue.dequeue();
-            if(!matchpeer) return;
-            const matchID = matchpeer.ID;
-            const matchSocket = matchpeer.socket;
 
-            if (matchID)
+            if (matchpeer)
                 {
+                    const matchID = matchpeer.ID;
+                    const matchSocket = matchpeer.socket;
                     console.log('matchID:', matchID);
                     socket.emit("caller", {matchID});
                     matchSocket.emit("callee");
@@ -74,10 +74,14 @@ server.on("connection", (socket) => {
         });
     // when socket disconnects, remove it from the list:
     socket.on("disconnect", () => {
+        console.log('client disconnected')
         topic = sockets[socket.id];
-        if(topicQueues[topic])
+        if(topicQueues[topic]){
             topicQueues[topic].delete(socket.id);
-            delete sockets[socket.id];
-        });
+            topicQueues[topic].log()
+        }
+        delete sockets[socket.id];
+        console.log(sockets)
+    });
 })
 
