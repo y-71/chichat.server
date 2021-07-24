@@ -1,4 +1,6 @@
-const {Server} = require("socket.io")
+const {Server} = require("socket.io");
+let Queue = require ("./queue");
+
 const server = new Server(8000,
     {
         cors: {
@@ -6,43 +8,71 @@ const server = new Server(8000,
         }
     },
     {transports: ['websocket']}
-)
+);
 
-const topicsQueues = new Map()
 
-topicsQueues.set('Music', [])
-topicsQueues.set('Movies', [])
-topicsQueues.set('Politics', [])
+const topicQueues = {};
+topicQueues.Music = new Queue();
+topicQueues.Politics = new Queue();
+topicQueues.Movies = new Queue();
+
+const sockets = {};
+const isValidID = (ID) =>{
+    return true;
+}
+
 
 // event fired every time a new client connects:
 server.on("connection", (socket) => {
-    console.info(`Client connected [id=${socket.id}]`)
+
+    console.info(`Client connected [id=${socket.id}]`);
     // Receive peer data : uid and topicName
-    socket.on('newPeerInformations', data => {
-        console.log('Peerdata', data)
+    socket.on('createPeer', peer => {
+        console.log('data', peer);
+
         // Match peer with another peer
-        if(data.topicName && data.peerId){
-            const {topicName, peerId} = data
-            //Adding user to the waiting pool
-            topicsQueues.set(topicName, [...Array(topicsQueues.get(topicName)), peerId])
+        if((!peer.topic || !peer.ID)) return;
 
-            // if there is a match, send otherPeerUid
-            const topicQueue = topicsQueues.get(topicName)
-            // Check peers
-            if(topicQueue.length > 1 && topicQueue[topicQueue.length] !== peerId){
-                const otherPeerId = topicQueue[topicQueue.length]
-                // Remove selectedPeer from the queue
-                topicQueue.pop()
-                topicsQueues.set(topicName, [...topicQueue])
-                // Send otherPeerId to begin the call
-                socket.emit(`matching-${peerId}`, {otherPeerId})
-            }
+
+        const {topic, ID} = peer;
+
+        // cache socket
+        const socketID = socket.id;
+        sockets.socketID = topic;
+
+        const validatePeer = () =>{
+
+            if (!(topic in topicQUeues) ) topicQueues.topic = new Queue();
+
+            if (!ID || !isValidID(ID))
+                {
+                    console.error("ID is not valid");
+                    return;
+                }
         }
-    })
+        const handlePeer = () =>{
+            // if there is a match, send otherPeerUid
+            const queue = topicsQueues.topic;
 
+            const {matchID, matchSocket} = queue.dequeue();
+            if (matchID)
+                {
+                    console.log('matchID:', matchID);
+                    socket.emit("caller", {matchID});
+                    matchSocket.emit("callee");
+                }
+            else{
+                queue.enqueue({ID, socket});
+                }
+        }
+        validatePeer();
+        handlePeer();
+        });
     // when socket disconnects, remove it from the list:
     socket.on("disconnect", () => {
-        //sequenceNumberByClient.delete(socket);
-        console.info(`Client gone [id=${socket.id}]`)
-    })
+        topic = sockets[socket.id];
+        topicQueues.topic.delete(socket.id);
+        sockets.delete(socket.id);
+        });
 })
+
