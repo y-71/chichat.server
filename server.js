@@ -17,6 +17,7 @@ topicQueues.Politics = new Queue();
 topicQueues.Movies = new Queue();
 
 const sockets = {};
+
 const isValidID = (ID) =>{
     return true;
 }
@@ -28,18 +29,15 @@ server.on("connection", (socket) => {
     console.info(`Client connected [id=${socket.id}]`);
     // Receive peer data : uid and topicName
     socket.on('createPeer', peer => {
-        console.log('data', peer);
-
-        // Match peer with another peer
+        console.log('Peer data', peer);
+        // Check peer data
         if((!peer.topic || !peer.ID)) return;
-
-
         const {topic, ID} = peer;
 
         // cache socket
         const socketID = socket.id;
         sockets[socketID] = topic;
-
+        // validate peer information
         const validatePeer = () =>{
 
             if (!(topic in topicQueues) ) topicQueues[topic] = new Queue();
@@ -50,36 +48,41 @@ server.on("connection", (socket) => {
                     return;
                 }
         }
+        // Match peer with another peer
         const handlePeer = () =>{
-            // if there is a match, send otherPeerUid
-            console.log({topic})
             const queue = topicQueues[topic];
-            queue.log()
-            const matchpeer = queue.dequeue();
-
-            if (matchpeer)
+            const matchPeer = queue.dequeue();
+            // We found a matching peer, inform both peers
+            if (matchPeer)
                 {
-                    const matchID = matchpeer.ID;
-                    const matchSocket = matchpeer.socket;
-                    console.log('matchID:', matchID);
-                    socket.emit("caller", {matchID});
-                    matchSocket.emit("callee");
+                    console.log('Found a matching peer, matchID:', matchPeer.ID);
+                    // Inform the caller to make the call
+                    socket.emit("caller", {matchID: matchPeer.ID});
+                    // Inform the calle to answer the call
+                    matchPeer.socket.emit("callee");
                 }
             else{
-                queue.enqueue({ID, socket});
+                    // Add current peer to the queue, he will waits until a matching peer show up
+                    queue.enqueue({ID, socket});
                 }
         }
         validatePeer();
         handlePeer();
-        });
+    });
+
     // when socket disconnects, remove it from the list:
     socket.on("disconnect", () => {
-        console.log('client disconnected')
+        console.log('Client disconnected')
+        // Get topic correspondant to the socket
         topic = sockets[socket.id];
+        if(!topic) return;
+        // Delete user from correspondant topic queue
         if(topicQueues[topic]){
+            console.log('Delete a user from ', topic, 'queue')
             topicQueues[topic].delete(socket.id);
             topicQueues[topic].log()
         }
+
         delete sockets[socket.id];
         console.log(sockets)
     });
