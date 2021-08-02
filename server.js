@@ -1,5 +1,6 @@
 const {Server} = require("socket.io");
 let Queue = require ("./queue");
+const {questionsDebate, questionsHaveFun} = require("./questions")
 
 const server = new Server(8000,
     {
@@ -12,9 +13,8 @@ const server = new Server(8000,
 
 
 const topicQueues = {};
-topicQueues.Music = new Queue();
-topicQueues.Politics = new Queue();
-topicQueues.Movies = new Queue();
+topicQueues.Debate = new Queue();
+topicQueues.HaveFun = new Queue();
 
 const sockets = {};
 
@@ -56,10 +56,11 @@ server.on("connection", (socket) => {
             if (matchPeer)
                 {
                     console.log('Found a matching peer, matchID:', matchPeer.ID);
+                    const questions = topic === 'Debate' ? questionsDebate : questionsHaveFun;
                     // Inform the caller to make the call
-                    socket.emit("caller", {matchID: matchPeer.ID});
+                    socket.emit("caller", {matchID: matchPeer.ID, questions});
                     // Inform the calle to answer the call
-                    matchPeer.socket.emit("callee");
+                    matchPeer.socket.emit("callee", {questions});
                 }
             else{
                     // Add current peer to the queue, he will waits until a matching peer show up
